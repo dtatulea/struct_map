@@ -91,6 +91,10 @@ set(syscse_SRCS syscse.c)
 add_executable(syscse ${syscse_SRCS})
 target_link_libraries(syscse dwarves)
 
+set(smap_SRCS struct_map.c)
+add_executable(smap ${smap_SRCS})
+target_link_libraries(smap dwarves dwarves_reorganize)
+
 install(TARGETS codiff ctracer dtagnames pahole pdwtags
 		pfunct pglobal prefcnt scncopy syscse RUNTIME DESTINATION
 		${CMAKE_INSTALL_PREFIX}/bin)
