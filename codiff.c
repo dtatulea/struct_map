@@ -24,6 +24,7 @@ static int show_struct_diffs;
 static int show_function_diffs;
 static int verbose;
 static int show_terse_type_changes;
+static int show_only_common;
 
 static struct conf_load conf_load = {
 	.get_addr_info = true,
@@ -333,20 +334,21 @@ static int cu_find_new_tags_iterator(struct cu *new_cu, void *old_cus)
 
 static int cu_diff_iterator(struct cu *cu, void *new_cus)
 {
-	struct cu *new_cu = cus__find_cu_by_name(new_cus, cu->name);
+	struct cu *new_cu;
+	list_for_each_entry(new_cu, &((struct cus *) new_cus)->cus, node) {
 
-	if (new_cu != NULL && cu__same_build_id(cu, new_cu))
-		return 0;
+		if (new_cu != NULL && cu__same_build_id(cu, new_cu))
+			continue;
 
-	uint32_t id;
-	struct class *class;
-	cu__for_each_struct(cu, id, class)
-		diff_struct(new_cu, class, cu);
+		uint32_t id;
+		struct class *class;
+		cu__for_each_struct(cu, id, class)
+			diff_struct(new_cu, class, cu);
 
-	struct function *function;
-	cu__for_each_function(cu, id, function)
-		diff_function(new_cu, function, cu);
-
+		struct function *function;
+		cu__for_each_function(cu, id, function)
+			diff_function(new_cu, function, cu);
+	}
 	return 0;
 }
 
@@ -707,6 +709,11 @@ static const struct argp_option codiff__options[] = {
 		.doc  = "show diffs details",
 	},
 	{
+		.key  = 'c',
+		.name = "common",
+		.doc  = "show diffs only for common data",
+	},
+	{
 		.name = NULL,
 	}
 };
@@ -720,6 +727,7 @@ static error_t codiff__options_parser(int key, char *arg __unused,
 	case 's': show_struct_diffs = 1;	break;
 	case 't': show_terse_type_changes = 1;	break;
 	case 'V': verbose = 1;			break;
+	case 'c': show_only_common = 1;		break;
 	default:  return ARGP_ERR_UNKNOWN;
 	}
 	return 0;
@@ -802,7 +810,8 @@ failure:
 	}
 
 	cus__for_each_cu(old_cus, cu_diff_iterator, new_cus, NULL);
-	cus__for_each_cu(new_cus, cu_find_new_tags_iterator, old_cus, NULL);
+	if (!show_only_common)
+		cus__for_each_cu(new_cus, cu_find_new_tags_iterator, old_cus, NULL);
 	cus__for_each_cu(old_cus, cu_show_diffs_iterator, NULL, NULL);
 	cus__for_each_cu(new_cus, cu_show_diffs_iterator, (void *)1, NULL);
 
